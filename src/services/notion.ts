@@ -46,3 +46,17 @@ export async function updateStatus(
     },
   });
 }
+
+export async function checkHasWrittenToday(): Promise<boolean> {
+  const today = new Date().toISOString().split("T")[0];
+
+  const response = await notion.dataSources.query({
+    data_source_id: databaseId,
+    filter: {
+      property: "Date",
+      date: { equals: today },
+    },
+  });
+
+  return response.results.length > 0;
+}

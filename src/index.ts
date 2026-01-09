@@ -1,11 +1,17 @@
 import "dotenv/config";
-import { fetchDailyJournal, updateStatus } from "./services/notion.js";
+import cron from "node-cron";
+import {
+  fetchDailyJournal,
+  updateStatus,
+  checkHasWrittenToday,
+} from "./services/notion.js";
 import { polishContent } from "./services/ai.js";
 import { splitIntoThread } from "./utils/textSplitter.js";
 import { postThread } from "./services/twitter.js";
+import { sendReminderEmail } from "./services/email.js";
 
-async function main() {
-  console.log("=== Starting automation ===");
+async function publishToTwitter() {
+  console.log("=== Starting publish automation ===");
 
   // 1. Fetch journal from Notion
   console.log("Fetching today's journal...");
@@ -36,10 +42,38 @@ async function main() {
   await updateStatus(journal.id, "Published");
   console.log("Status updated to Published");
 
-  console.log("=== Automation complete ===");
+  console.log("=== Publish automation complete ===");
 }
 
-main().catch((err) => {
+async function checkAndRemind() {
+  console.log("=== Checking daily journal ===");
+
+  const hasWritten = await checkHasWrittenToday();
+
+  if (hasWritten) {
+    console.log("Journal entry found for today, skipping reminder");
+  } else {
+    console.log("No journal entry today, sending reminder...");
+    await sendReminderEmail();
+  }
+
+  console.log("=== Check complete ===");
+}
+
+// Schedule reminder check at 8:00 PM every day
+cron.schedule("0 20 * * *", async () => {
+  console.log(`[${new Date().toISOString()}] Running scheduled reminder check`);
+  try {
+    await checkAndRemind();
+  } catch (err) {
+    console.error("Reminder check error:", (err as Error).message);
+  }
+});
+
+console.log("Scheduler started. Reminder check scheduled for 20:00 daily.");
+
+// Run publish automation immediately
+publishToTwitter().catch((err) => {
   console.error("Error:", err.message);
   process.exit(1);
 });
