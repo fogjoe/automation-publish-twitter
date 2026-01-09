@@ -1,19 +1,45 @@
 import "dotenv/config";
-import { fetchDailyJournal } from "./services/notion.js";
+import { fetchDailyJournal, updateStatus } from "./services/notion.js";
+import { polishContent } from "./services/ai.js";
+import { splitIntoThread } from "./utils/textSplitter.js";
+import { postThread } from "./services/twitter.js";
 
 async function main() {
+  console.log("=== Starting automation ===");
+
   // 1. Fetch journal from Notion
+  console.log("Fetching today's journal...");
   const journal = await fetchDailyJournal();
   if (!journal) {
-    console.log("No journal ready for today");
+    console.log("No journal to post");
     return;
   }
-  console.log("Found journal:", journal.title);
+  console.log(`Found: "${journal.title}"`);
 
-  // TODO: 2. Polish content with AI (OpenRouter)
-  // TODO: 3. Split into Twitter thread
-  // TODO: 4. Publish to Twitter via Playwright
-  // TODO: 5. Update Notion status to "Published"
+  // 2. Polish content with AI
+  console.log("Polishing content with AI...");
+  const polished = await polishContent(journal.content);
+  console.log("Content polished successfully");
+
+  // 3. Split into Twitter thread
+  console.log("Splitting into thread...");
+  const tweets = splitIntoThread(polished);
+  console.log(`Split into ${tweets.length} tweets`);
+
+  // 4. Post to Twitter
+  console.log("Posting to Twitter...");
+  await postThread(tweets);
+  console.log("Posted successfully!");
+
+  // 5. Update Notion status
+  console.log("Updating Notion status...");
+  await updateStatus(journal.id, "Published");
+  console.log("Status updated to Published");
+
+  console.log("=== Automation complete ===");
 }
 
-main().catch(console.error);
+main().catch((err) => {
+  console.error("Error:", err.message);
+  process.exit(1);
+});
