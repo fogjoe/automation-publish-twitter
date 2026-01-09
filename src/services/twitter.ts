@@ -34,7 +34,7 @@ export async function postThread(tweets: string[]): Promise<void> {
 
     // Wait for UI to settle, then click post
     await page.waitForTimeout(2000);
-    await page.locator('[data-testid="tweetButtonInline"]').click({ timeout: 5000 });
+    await page.locator('[data-testid="tweetButton"]').click({ timeout: 5000 });
     await page.waitForTimeout(5000);
 
     console.log(`Successfully posted ${tweets.length} tweets!`);
