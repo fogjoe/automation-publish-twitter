@@ -1,0 +1,27 @@
+{
+  "name": "automation-publish-twitter",
+  "version": "1.0.0",
+  "description": "Automate publishing daily English diary from Notion to Twitter",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx src/index.ts",
+    "test": "tsx src/debug.ts",
+    "build": "tsc",
+    "start": "node dist/index.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "packageManager": "pnpm@10.11.0",
+  "dependencies": {
+    "@notionhq/client": "^5.6.0",
+    "dotenv": "^17.2.3",
+    "openai": "^6.15.0",
+    "playwright": "^1.57.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.0.3",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  }
+}
