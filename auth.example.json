@@ -1,0 +1,8 @@
+{
+    "cookies": [
+      {"name": "auth_token", "value": "xxxxx", "domain": ".x.com", "path": "/"},
+      {"name": "ct0", "value": "xxxxx", "domain": ".x.com", "path": "/"},
+      {"name": "twid", "value": "xxxxx", "domain": ".x.com", "path": "/"}
+    ],
+    "origins": []
+  }
