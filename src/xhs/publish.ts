@@ -1,13 +1,15 @@
 import { chromium, BrowserContext, Page } from "playwright";
 import * as fs from "fs";
 import * as path from "path";
+import * as https from "https";
+import * as http from "http";
 
 /**
  * 小红书自动发布脚本
  *
  * 功能：
  * 1. 加载已保存的登录凭证，实现免登录
- * 2. 上传图片、填写标题和正文
+ * 2. 上传图片（支持本地路径或在线URL）、填写标题和正文
  * 3. 自动点击发布按钮
  */
 
@@ -19,6 +21,70 @@ const PUBLISH_URL = "https://creator.xiaohongshu.com/publish/publish";
 
 // 登录页面特征（用于检测登录失效）
 const LOGIN_URL_PATTERN = /login|passport/i;
+
+// 临时文件目录
+const TEMP_DIR = path.join(process.cwd(), "build");
+
+/**
+ * 下载在线图片到本地临时文件
+ */
+async function downloadImage(url: string): Promise<string> {
+  // 确保临时目录存在
+  if (!fs.existsSync(TEMP_DIR)) {
+    fs.mkdirSync(TEMP_DIR, { recursive: true });
+  }
+
+  // 从 URL 提取文件扩展名，默认 .jpg
+  const urlPath = new URL(url).pathname;
+  const ext = path.extname(urlPath) || ".jpg";
+  const tempFile = path.join(TEMP_DIR, `temp-image-${Date.now()}${ext}`);
+
+  return new Promise((resolve, reject) => {
+    const protocol = url.startsWith("https") ? https : http;
+
+    const request = protocol.get(url, (response) => {
+      // 处理重定向
+      if (response.statusCode === 301 || response.statusCode === 302) {
+        const redirectUrl = response.headers.location;
+        if (redirectUrl) {
+          downloadImage(redirectUrl).then(resolve).catch(reject);
+          return;
+        }
+      }
+
+      if (response.statusCode !== 200) {
+        reject(new Error(`下载失败，状态码: ${response.statusCode}`));
+        return;
+      }
+
+      const fileStream = fs.createWriteStream(tempFile);
+      response.pipe(fileStream);
+
+      fileStream.on("finish", () => {
+        fileStream.close();
+        resolve(tempFile);
+      });
+
+      fileStream.on("error", (err) => {
+        fs.unlink(tempFile, () => {}); // 删除失败的文件
+        reject(err);
+      });
+    });
+
+    request.on("error", reject);
+    request.setTimeout(30000, () => {
+      request.destroy();
+      reject(new Error("下载超时"));
+    });
+  });
+}
+
+/**
+ * 判断是否为 URL
+ */
+function isUrl(str: string): boolean {
+  return str.startsWith("http://") || str.startsWith("https://");
+}
 
 /**
  * 加载认证信息并创建浏览器上下文
@@ -175,23 +241,34 @@ async function switchToImageTextTab(page: Page): Promise<void> {
 /**
  * 发布笔记到小红书
  *
- * @param imagePath - 图片文件路径
+ * @param imageSource - 图片来源（本地路径或在线 URL）
  * @param title - 笔记标题
  * @param content - 笔记正文
  */
 export async function publishToXhs(
-  imagePath: string,
+  imageSource: string,
   title: string,
   content: string
 ): Promise<void> {
   console.log("=== 小红书发布脚本启动 ===\n");
 
-  // 检查图片文件是否存在
-  const absoluteImagePath = path.resolve(imagePath);
-  if (!fs.existsSync(absoluteImagePath)) {
-    throw new Error(`图片文件不存在: ${absoluteImagePath}`);
+  let absoluteImagePath: string;
+  let tempFile: string | null = null;
+
+  // 处理图片来源：支持本地路径或在线 URL
+  if (isUrl(imageSource)) {
+    console.log(`检测到在线图片: ${imageSource}`);
+    console.log("正在下载图片...");
+    tempFile = await downloadImage(imageSource);
+    absoluteImagePath = tempFile;
+    console.log(`✓ 图片已下载到: ${tempFile}\n`);
+  } else {
+    absoluteImagePath = path.resolve(imageSource);
+    if (!fs.existsSync(absoluteImagePath)) {
+      throw new Error(`图片文件不存在: ${absoluteImagePath}`);
+    }
+    console.log(`待上传图片: ${absoluteImagePath}\n`);
   }
-  console.log(`待上传图片: ${absoluteImagePath}`);
 
   // 创建已认证的浏览器上下文
   const context = await createAuthenticatedContext();
@@ -398,19 +475,26 @@ export async function publishToXhs(
     // 等待一会儿再关闭，方便观察结果
     await page.waitForTimeout(5000);
     await context.browser()?.close();
+
+    // 清理临时文件
+    if (tempFile && fs.existsSync(tempFile)) {
+      fs.unlinkSync(tempFile);
+      console.log("临时图片文件已清理");
+    }
   }
 }
 
 // 如果直接运行此脚本，则执行测试发布
 const isMainModule = import.meta.url === `file://${process.argv[1]}`;
 if (isMainModule) {
-  // 测试参数
-  const testImagePath = "build/test.png";
+  // 测试参数 - 支持本地路径或在线 URL
+  const testImageSource =
+    "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800";
   const testTitle = "测试标题 - 自动发布测试";
   const testContent =
     "这是一条测试笔记的正文内容，用于验证自动发布功能是否正常工作。";
 
-  publishToXhs(testImagePath, testTitle, testContent).catch((err) => {
+  publishToXhs(testImageSource, testTitle, testContent).catch((err) => {
     console.error("执行失败:", err.message);
     process.exit(1);
   });
