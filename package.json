@@ -9,6 +9,7 @@
     "login": "tsx tools/login.ts",
     "xhs:login": "tsx src/xhs/login.ts",
     "xhs:publish": "tsx src/xhs/publish.ts",
+    "xhs:run": "tsx src/xhs-entry.ts",
     "build": "tsc"
   },
   "keywords": [],
