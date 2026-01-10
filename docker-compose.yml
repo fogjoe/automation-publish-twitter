@@ -1,0 +1,11 @@
+services:
+  journal-bot:
+    build: .
+    container_name: journal-bot
+    restart: always
+    env_file:
+      - .env
+    environment:
+      - TZ=Asia/Shanghai
+    volumes:
+      - ./auth.json:/app/auth.json
