@@ -105,3 +105,19 @@ export async function checkHasWrittenToday(): Promise<boolean> {
 
   return response.results.length > 0;
 }
+
+export async function checkHasPublishedToday(): Promise<boolean> {
+  const today = new Date().toISOString().split("T")[0];
+
+  const response = await notion.dataSources.query({
+    data_source_id: databaseId,
+    filter: {
+      and: [
+        { property: "Date", date: { equals: today } },
+        { property: "Status", select: { equals: "Published" } },
+      ],
+    },
+  });
+
+  return response.results.length > 0;
+}

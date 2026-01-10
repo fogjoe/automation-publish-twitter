@@ -4,6 +4,7 @@ import {
   fetchDailyJournal,
   updateStatus,
   checkHasWrittenToday,
+  checkHasPublishedToday,
 } from "./services/notion.js";
 import { polishContent } from "./services/ai.js";
 import { splitIntoThread } from "./utils/textSplitter.js";
@@ -168,6 +169,14 @@ async function publishToAllPlatforms() {
 
 async function checkAndRemind() {
   console.log("=== Checking daily journal ===");
+
+  // 如果今天的文章已经发布，跳过提醒
+  const hasPublished = await checkHasPublishedToday();
+  if (hasPublished) {
+    console.log("Today's article already published, skipping reminder");
+    console.log("=== Check complete ===");
+    return;
+  }
 
   const hasWritten = await checkHasWrittenToday();
 
