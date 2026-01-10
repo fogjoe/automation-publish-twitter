@@ -9,3 +9,4 @@ services:
       - TZ=Asia/Shanghai
     volumes:
       - ./auth.json:/app/auth.json
+      - ./xhs-auth.json:/app/xhs-auth.json

@@ -1,0 +1,14 @@
+{
+  "cookies": [
+    {
+      "name": "example_cookie",
+      "value": "xxxxx",
+      "domain": ".xiaohongshu.com",
+      "path": "/"
+    }
+  ],
+  "localStorage": {
+    "example_key": "example_value"
+  },
+  "savedAt": "2024-01-01T00:00:00.000Z"
+}
