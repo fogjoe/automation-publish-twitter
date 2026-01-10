@@ -1,5 +1,5 @@
 # Base image with Playwright and browsers pre-installed
-FROM mcr.microsoft.com/playwright:v1.49.0-focal
+FROM mcr.microsoft.com/playwright:v1.49.0-jammy
 
 # Set timezone
 ENV TZ=Asia/Shanghai
