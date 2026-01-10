@@ -60,6 +60,16 @@ async function checkAndRemind() {
   console.log("=== Check complete ===");
 }
 
+// Schedule publish check every 2 hours
+cron.schedule("0 */2 * * *", async () => {
+  console.log(`[${new Date().toISOString()}] Running publish check`);
+  try {
+    await publishToTwitter();
+  } catch (err) {
+    console.error("Publish error:", (err as Error).message);
+  }
+});
+
 // Schedule reminder check at 8:00 PM every day
 cron.schedule("0 20 * * *", async () => {
   console.log(`[${new Date().toISOString()}] Running scheduled reminder check`);
@@ -70,10 +80,7 @@ cron.schedule("0 20 * * *", async () => {
   }
 });
 
-console.log("Scheduler started. Reminder check scheduled for 20:00 daily.");
-
-// Run publish automation immediately
-publishToTwitter().catch((err) => {
-  console.error("Error:", err.message);
-  process.exit(1);
-});
+console.log("Scheduler started:");
+console.log("  - Publish check: every 2 hours at :00");
+console.log("  - Reminder check: 20:00 daily");
+console.log("Waiting for scheduled tasks...");
