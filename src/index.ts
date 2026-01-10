@@ -60,9 +60,9 @@ async function checkAndRemind() {
   console.log("=== Check complete ===");
 }
 
-// Schedule publish check every 2 hours
-cron.schedule("0 */2 * * *", async () => {
-  console.log(`[${new Date().toISOString()}] Running publish check`);
+// Schedule publish check every hour
+cron.schedule("0 * * * *", async () => {
+  console.log(`[${new Date().toISOString()}] Running hourly publish check`);
   try {
     await publishToTwitter();
   } catch (err) {
@@ -81,6 +81,18 @@ cron.schedule("0 20 * * *", async () => {
 });
 
 console.log("Scheduler started:");
-console.log("  - Publish check: every 2 hours at :00");
+console.log("  - Publish check: every hour at :00");
 console.log("  - Reminder check: 20:00 daily");
-console.log("Waiting for scheduled tasks...");
+
+// Run initial check on startup
+console.log("\nRunning initial publish check...");
+publishToTwitter()
+  .then(() => {
+    console.log("\nScheduler is running. Next actions:");
+    console.log("  - Hourly: check for new articles with Status='Ready'");
+    console.log("  - 20:00: send reminder if no article written today");
+  })
+  .catch((err) => {
+    console.error("Initial check error:", (err as Error).message);
+    console.log("\nScheduler is running, will retry on next hour...");
+  });
