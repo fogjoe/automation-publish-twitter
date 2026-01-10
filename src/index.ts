@@ -6,7 +6,7 @@ import {
   checkHasWrittenToday,
   checkHasPublishedToday,
 } from "./services/notion.js";
-import { polishContent } from "./services/ai.js";
+import { polishContent, summarizeForRedNote } from "./services/ai.js";
 import { splitIntoThread } from "./utils/textSplitter.js";
 import { postThread } from "./services/twitter.js";
 import { sendReminderEmail } from "./services/email.js";
@@ -16,9 +16,9 @@ import { publishToXhs } from "./xhs/index.js";
  * 获取随机图片 URL（使用 Lorem Picsum）
  */
 function getRandomImageUrl(): string {
-  // 随机图片 ID (1-1000)
-  const randomId = Math.floor(Math.random() * 1000) + 1;
-  return `https://picsum.photos/id/${randomId}/1080/1080.jpg`;
+  // 使用 seed 参数确保稳定性，同时保持随机性
+  const seed = Date.now();
+  return `https://picsum.photos/seed/${seed}/1080/1080`;
 }
 
 /**
@@ -85,18 +85,21 @@ async function publishRedNote() {
   const polished = await polishContent(journal.content);
   console.log("Content polished successfully");
 
-  // 4. 准备正文（润色后内容 + 标签）
+  // 4. 如果超过 1000 字，压缩内容
+  const summarized = await summarizeForRedNote(polished);
+
+  // 5. 准备正文（压缩后内容 + 标签）
   const hashtags = formatTagsAsHashtags(journal.tags);
-  const content = hashtags ? `${polished}\n\n${hashtags}` : polished;
+  const content = hashtags ? `${summarized}\n\n${hashtags}` : summarized;
 
   console.log(`Tags: ${journal.tags.join(", ") || "无"}`);
   console.log(`Content length: ${content.length} chars`);
 
-  // 5. 获取随机图片
+  // 6. 获取随机图片
   const imageUrl = getRandomImageUrl();
   console.log(`Random image: ${imageUrl}`);
 
-  // 6. 发布到小红书
+  // 7. 发布到小红书
   await publishToXhs(imageUrl, title, content);
   console.log("Posted to RedNote successfully!");
 
