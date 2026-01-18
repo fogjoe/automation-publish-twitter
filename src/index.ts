@@ -1,4 +1,5 @@
 import 'dotenv/config'
+import { fileURLToPath } from 'url'
 import cron from 'node-cron'
 import { fetchDailyJournal, updateStatus, checkHasWrittenToday, checkHasPublishedToday } from './services/notion.js'
 import { polishContent, summarizeForRedNote } from './services/ai.js'
@@ -40,13 +41,14 @@ async function publishTwitter() {
   console.log(`Found: "${journal.title}"`)
 
   // 2. Polish content with AI
-  console.log('Polishing content with AI...')
-  const polished = await polishContent(journal.content)
-  console.log('Content polished successfully')
+  // console.log('Polishing content with AI...')
+  // const polished = await polishContent(journal.content)
+  // console.log('Content polished successfully')
 
   // 3. Split into Twitter thread
   console.log('Splitting into thread...')
-  const tweets = splitIntoThread(polished)
+  // const tweets = splitIntoThread(polished)
+  const tweets = splitIntoThread(journal.content)
   console.log(`Split into ${tweets.length} tweets`)
 
   // 4. Post to Twitter
@@ -214,40 +216,45 @@ async function checkAndRemind() {
   console.log('=== Check complete ===')
 }
 
-// Schedule publish check every hour
-cron.schedule('0 * * * *', async () => {
-  console.log(`\n[${new Date().toISOString()}] Running hourly publish check`)
-  try {
-    await publishToAllPlatforms()
-  } catch (err) {
-    console.error('Publish error:', (err as Error).message)
-  }
-})
+// Only run scheduler when this file is executed directly (not imported)
+const isMainModule = process.argv[1] === fileURLToPath(import.meta.url)
 
-// Schedule reminder check at 8:00 PM every day
-cron.schedule('0 20 * * *', async () => {
-  console.log(`\n[${new Date().toISOString()}] Running scheduled reminder check`)
-  try {
-    await checkAndRemind()
-  } catch (err) {
-    console.error('Reminder check error:', (err as Error).message)
-  }
-})
-
-console.log('Scheduler started:')
-console.log('  - Publish check: every hour at :00 (Twitter + RedNote)')
-console.log('  - Reminder check: 20:00 daily')
-
-// Run initial check on startup
-console.log('\nRunning initial publish check...')
-publishToAllPlatforms()
-  .then(() => {
-    console.log('\nScheduler is running. Next actions:')
-    console.log("  - Hourly: check for new articles with Status='Ready'")
-    console.log('  - 20:00: send reminder if no article written today')
+if (isMainModule) {
+  // Schedule publish check every hour
+  cron.schedule('0 * * * *', async () => {
+    console.log(`\n[${new Date().toISOString()}] Running hourly publish check`)
+    try {
+      await publishToAllPlatforms()
+    } catch (err) {
+      console.error('Publish error:', (err as Error).message)
+    }
   })
-  .catch(err => {
-    console.error('Initial check error:', (err as Error).message)
-    console.log('\nScheduler is running, will retry on next hour...')
+
+  // Schedule reminder check at 8:00 PM every day
+  cron.schedule('0 20 * * *', async () => {
+    console.log(`\n[${new Date().toISOString()}] Running scheduled reminder check`)
+    try {
+      await checkAndRemind()
+    } catch (err) {
+      console.error('Reminder check error:', (err as Error).message)
+    }
   })
+
+  console.log('Scheduler started:')
+  console.log('  - Publish check: every hour at :00 (Twitter + RedNote)')
+  console.log('  - Reminder check: 20:00 daily')
+
+  // Run initial check on startup
+  console.log('\nRunning initial publish check...')
+  publishToAllPlatforms()
+    .then(() => {
+      console.log('\nScheduler is running. Next actions:')
+      console.log("  - Hourly: check for new articles with Status='Ready'")
+      console.log('  - 20:00: send reminder if no article written today')
+    })
+    .catch(err => {
+      console.error('Initial check error:', (err as Error).message)
+      console.log('\nScheduler is running, will retry on next hour...')
+    })
+}
 
